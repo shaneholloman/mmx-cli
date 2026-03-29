@@ -47,7 +47,7 @@ export async function request(
     }
 
     // ANSI 真彩色 (24-bit) 与基础排版
-    if (process.stderr.isTTY) {
+    if (!config.quiet && process.stderr.isTTY) {
       const reset = '\x1b[0m';
       const dim = '\x1b[2m';
       const bold = '\x1b[1m'; // 新增加粗效果

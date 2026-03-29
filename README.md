@@ -58,6 +58,16 @@ minimax text chat --message "Hi" --output json | jq .        # pipe-friendly
 minimax config export-schema | jq .                          # tool schemas
 ```
 
+## Changelog
+
+### v0.5.0
+- **Brand status bar**: HTTP requests now print a beautiful true-color status bar showing `MINIMAX Region: CN | Key: sk-c...nI7s | Model: MiniMax-M2.7` in MiniMax brand colors (blue, purple, cyan, pink)
+- Status bar respects `--quiet` flag and only renders in TTY terminals
+- Removed duplicate `[Model: ...]` output from `text chat` command
+
+### v0.1.0
+- Initial release — text, image, video, speech, music, vision, and search commands
+
 ## Output Philosophy
 
 - `stdout` → data only (text, paths, JSON)
