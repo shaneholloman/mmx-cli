@@ -31,9 +31,8 @@ export function loadConfig(flags: GlobalFlags): Config {
   const region = (explicitRegion || cachedRegion || 'global') as Region;
 
   const activeKey = apiKey || fileApiKey || envApiKey;
-  const keyFingerprint = activeKey ? activeKey.slice(0, 8) : undefined;
   const needsRegionDetection = !explicitRegion
-    && (!cachedRegion || (keyFingerprint !== undefined && keyFingerprint !== file.region_key_fingerprint));
+    && (!cachedRegion || (activeKey !== undefined && activeKey !== file.api_key));
 
   const baseUrl = flags.baseUrl
     || process.env.MINIMAX_BASE_URL

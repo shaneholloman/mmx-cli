@@ -38,9 +38,8 @@ export async function detectRegion(apiKey: string): Promise<Region> {
   return detected;
 }
 
-export async function saveDetectedRegion(region: Region, keyFingerprint?: string): Promise<void> {
+export async function saveDetectedRegion(region: Region): Promise<void> {
   const existing = readConfigFile() as Record<string, unknown>;
   existing.region = region;
-  if (keyFingerprint) existing.region_key_fingerprint = keyFingerprint;
   await writeConfigFile(existing);
 }

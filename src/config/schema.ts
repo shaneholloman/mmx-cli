@@ -8,7 +8,6 @@ export type Region = keyof typeof REGIONS;
 export interface ConfigFile {
   api_key?: string;
   region?: Region;
-  region_key_fingerprint?: string;
   base_url?: string;
   output?: 'text' | 'json';
   timeout?: number;
@@ -24,7 +23,6 @@ export function parseConfigFile(raw: unknown): ConfigFile {
 
   if (typeof obj.api_key === 'string') out.api_key = obj.api_key;
   if (typeof obj.region === 'string' && VALID_REGIONS.has(obj.region)) out.region = obj.region as Region;
-  if (typeof obj.region_key_fingerprint === 'string') out.region_key_fingerprint = obj.region_key_fingerprint;
   if (typeof obj.base_url === 'string' && obj.base_url.startsWith('http')) out.base_url = obj.base_url;
   if (typeof obj.output === 'string' && VALID_OUTPUTS.has(obj.output)) out.output = obj.output as ConfigFile['output'];
   if (typeof obj.timeout === 'number' && obj.timeout > 0) out.timeout = obj.timeout;

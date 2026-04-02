@@ -59,7 +59,7 @@ async function main() {
       config.region = detected;
       config.baseUrl = REGIONS[detected];
       config.needsRegionDetection = false;
-      await saveDetectedRegion(detected, apiKey.slice(0, 8));
+      await saveDetectedRegion(detected);
     }
   }
 
