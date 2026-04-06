@@ -18,7 +18,7 @@ export default defineCommand({
     { flag: '--prompt <text>', description: 'Music style description (can be detailed — see examples)' },
     { flag: '--lyrics <text>', description: 'Song lyrics with structure tags. Use "无歌词" for instrumental music. Cannot be used with --instrumental.' },
     { flag: '--lyrics-file <path>', description: 'Read lyrics from file. Use "无歌词" for instrumental. (use - for stdin)' },
-    { flag: '--vocals <text>', description: 'Vocal style, e.g. "warm male and bright female duet"' },
+    { flag: '--vocals <text>', description: 'Vocal style, e.g. "warm male baritone", "bright female soprano", "duet with harmonies"' },
     { flag: '--genre <text>', description: 'Music genre, e.g. folk, pop, jazz' },
     { flag: '--mood <text>', description: 'Mood or emotion, e.g. warm, melancholic, uplifting' },
     { flag: '--instruments <text>', description: 'Instruments to feature, e.g. "acoustic guitar, piano"' },
