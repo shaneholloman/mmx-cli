@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MiniMax-AI/cli/main/assets/logo.png" alt="MiniMax" width="320" />
+  <img src="https://filecdn.minimax.chat/public/6335add6-5bff-42c8-89bf-0a505aa61c5a.png" alt="MiniMax" width="320" />
 </p>
 
 <p align="center">
