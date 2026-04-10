@@ -14,7 +14,7 @@ import { musicCoverModel } from './models';
 export default defineCommand({
   name: 'music cover',
   description: 'Generate a cover version of a song based on reference audio (music-cover / music-cover-free)',
-  apiDocs: 'https://platform.minimax.io/docs/api-reference/music-generation',
+  apiDocs: '/docs/api-reference/music-generation',
   usage: 'mmx music cover --prompt <text> (--audio <url> | --audio-file <path>) [--lyrics <text>] [--out <path>] [flags]',
   options: [
     { flag: '--model <model>', description: 'Model: music-cover (Token Plan), music-cover-free (Pay-as-you-go, default). Override only if needed.' },
@@ -69,6 +69,14 @@ export default defineCommand({
     const format = detectOutputFormat(config.output);
 
     const model = (flags.model as string) || musicCoverModel(config);
+    const VALID_MODELS = ['music-cover', 'music-cover-free'];
+    if (flags.model && !VALID_MODELS.includes(model)) {
+      throw new CLIError(
+        `Invalid model "${model}". Valid models: ${VALID_MODELS.join(', ')}`,
+        ExitCode.USAGE,
+        'mmx music cover --model music-cover',
+      );
+    }
     const body: MusicRequest = {
       model,
       prompt,

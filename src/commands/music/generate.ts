@@ -14,7 +14,7 @@ import { musicGenerateModel } from './models';
 export default defineCommand({
   name: 'music generate',
   description: 'Generate a song (music-2.6 / music-2.6-free / music-2.5+ / music-2.5)',
-  apiDocs: 'https://platform.minimax.io/docs/api-reference/music-generation',
+  apiDocs: '/docs/api-reference/music-generation',
   usage: 'mmx music generate --prompt <text> (--lyrics <text> | --instrumental | --lyrics-optimizer) [--out <path>] [flags]',
   options: [
     { flag: '--prompt <text>', description: 'Music style description (e.g. "cinematic orchestral, building tension"). Max 2000 chars when combined with structured flags.' },
@@ -125,10 +125,25 @@ export default defineCommand({
     const format = detectOutputFormat(config.output);
 
     const model = (flags.model as string) || musicGenerateModel(config);
+    const VALID_MODELS = ['music-2.6', 'music-2.6-free', 'music-2.5+', 'music-2.5'];
+    if (flags.model && !VALID_MODELS.includes(model)) {
+      throw new CLIError(
+        `Invalid model "${model}". Valid models: ${VALID_MODELS.join(', ')}`,
+        ExitCode.USAGE,
+        'mmx music generate --model music-2.6',
+      );
+    }
     const outFormat = (flags.outputFormat as string) || 'hex';
     if (outFormat !== 'hex' && outFormat !== 'url') {
       throw new CLIError(
         '--output-format must be "hex" or "url".',
+        ExitCode.USAGE,
+        'mmx music generate --output-format url',
+      );
+    }
+    if (flags.stream && outFormat === 'url') {
+      throw new CLIError(
+        '--stream and --output-format url cannot be used together. Streaming requires hex format.',
         ExitCode.USAGE,
         'mmx music generate --output-format url',
       );
