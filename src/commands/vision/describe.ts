@@ -67,7 +67,7 @@ export default defineCommand({
     'mmx vision describe --file-id file-123456789 --prompt "Extract the text"',
   ],
   async run(config: Config, flags: GlobalFlags) {
-    let image = (flags.image ?? (flags._positional as string[]|undefined)?.[0]) as string | undefined;
+    let image = (flags.image ?? flags.file ?? flags.path ?? (flags._positional as string[]|undefined)?.[0]) as string | undefined;
     let fileId = flags.fileId as string | undefined;
     const prompt = (flags.prompt as string) || 'Describe the image.';
 

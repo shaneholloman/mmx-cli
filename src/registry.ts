@@ -269,6 +269,7 @@ export const registry = new CommandRegistry({
   'auth logout':       authLogout,
   'text chat':         textChat,
   'speech synthesize': speechSynthesize,
+  'speech generate':   speechSynthesize,
   'speech voices':     speechVoices,
   'image generate':    imageGenerate,
   'video generate':    videoGenerate,
