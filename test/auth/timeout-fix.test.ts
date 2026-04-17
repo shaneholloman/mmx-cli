@@ -199,17 +199,20 @@ describe('handleError: timeout message includes region/auth hint', () => {
 
     let captured = '';
     const origWrite = process.stderr.write.bind(process.stderr);
+    const origExit = process.exit;
     (process.stderr as NodeJS.WriteStream).write = (chunk: unknown) => {
       captured += String(chunk);
       return true;
     };
+    (process as unknown as Record<string, unknown>).exit = () => { throw new Error('exit'); };
 
     try {
       handleError(abortErr);
     } catch {
-      // process.exit throws in test env — that's expected
+      // mocked process.exit throws — expected
     } finally {
       (process.stderr as NodeJS.WriteStream).write = origWrite;
+      (process as unknown as Record<string, unknown>).exit = origExit;
     }
 
     expect(captured).toContain('mmx auth status');
