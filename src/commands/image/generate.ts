@@ -9,7 +9,7 @@ import type { Config } from '../../config/schema';
 import type { GlobalFlags } from '../../types/flags';
 import type { ImageRequest, ImageResponse } from '../../types/api';
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
-import { join, resolve, extname } from 'path';
+import { dirname, join, resolve, extname } from 'path';
 import { isInteractive } from '../../utils/env';
 import { promptText, failIfMissing } from '../../utils/prompt';
 
@@ -33,6 +33,7 @@ export default defineCommand({
     { flag: '--prompt-optimizer', description: 'Automatically optimize the prompt before generation for better results.' },
     { flag: '--aigc-watermark', description: 'Embed AI-generated content watermark in the output image.' },
     { flag: '--subject-ref <params>', description: 'Subject reference for character consistency. Format: type=character,image=path-or-url' },
+    { flag: '--out <path>', description: 'Save image to exact file path (single image only)' },
     { flag: '--response-format <format>', description: 'Response format: url (download), base64 (embed). Default: url' },
     { flag: '--out-dir <dir>', description: 'Download images to directory' },
     { flag: '--out-prefix <prefix>', description: 'Filename prefix (default: image)' },
@@ -47,6 +48,8 @@ export default defineCommand({
     'mmx image generate --prompt "Wide landscape" --width 1920 --height 1080',
     '# Optimized prompt with watermark',
     'mmx image generate --prompt "sunset" --prompt-optimizer --aigc-watermark',
+    '# Save to exact path',
+    'mmx image generate --prompt "A cat" --out /tmp/cat.jpg',
     '# Base64 response (bypasses CDN, useful when image URLs are unreachable)',
     'mmx image generate --prompt "A cat" --response-format base64',
   ],
@@ -89,6 +92,11 @@ export default defineCommand({
       };
       validateSize('width', width);
       validateSize('height', height);
+    }
+
+    const outPath = flags.out as string | undefined;
+    if (outPath && (flags.n as number) > 1) {
+      throw new CLIError('--out cannot be used with --n > 1. Use --out-dir instead.', ExitCode.USAGE);
     }
 
     const responseFormat = (flags.responseFormat as 'url' | 'base64' | undefined) || 'url';
@@ -153,33 +161,50 @@ export default defineCommand({
       process.stderr.write('[Model: image-01]\n');
     }
 
-    const outDir = (flags.outDir as string | undefined) ?? '.';
-    if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-
-    const prefix = (flags.outPrefix as string) || 'image';
     const saved: string[] = [];
 
-    if (responseFormat === 'base64') {
-      const images = response.data.image_base64 || [];
-      for (let i = 0; i < images.length; i++) {
-        const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
-        const destPath = join(outDir, filename);
-        if (existsSync(destPath)) {
-          process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
-        }
-        writeFileSync(destPath, images[i]!, 'base64');
-        saved.push(destPath);
+    if (outPath) {
+      const dir = dirname(resolve(outPath));
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const destPath = resolve(outPath);
+      if (existsSync(destPath)) {
+        process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
       }
+      if (responseFormat === 'base64') {
+        const image = (response.data.image_base64 || [])[0];
+        if (image) writeFileSync(destPath, image, 'base64');
+      } else {
+        const imageUrl = (response.data.image_urls || [])[0];
+        if (imageUrl) await downloadFile(imageUrl, destPath, { quiet: config.quiet });
+      }
+      saved.push(destPath);
     } else {
-      const imageUrls = response.data.image_urls || [];
-      for (let i = 0; i < imageUrls.length; i++) {
-        const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
-        const destPath = join(outDir, filename);
-        if (existsSync(destPath)) {
-          process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+      const outDir = (flags.outDir as string | undefined) ?? '.';
+      if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+      const prefix = (flags.outPrefix as string) || 'image';
+
+      if (responseFormat === 'base64') {
+        const images = response.data.image_base64 || [];
+        for (let i = 0; i < images.length; i++) {
+          const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
+          const destPath = join(outDir, filename);
+          if (existsSync(destPath)) {
+            process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+          }
+          writeFileSync(destPath, images[i]!, 'base64');
+          saved.push(destPath);
         }
-        await downloadFile(imageUrls[i]!, destPath, { quiet: config.quiet });
-        saved.push(destPath);
+      } else {
+        const imageUrls = response.data.image_urls || [];
+        for (let i = 0; i < imageUrls.length; i++) {
+          const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
+          const destPath = join(outDir, filename);
+          if (existsSync(destPath)) {
+            process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+          }
+          await downloadFile(imageUrls[i]!, destPath, { quiet: config.quiet });
+          saved.push(destPath);
+        }
       }
     }
 
