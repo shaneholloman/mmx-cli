@@ -8,15 +8,15 @@ import { formatOutput, detectOutputFormat } from '../../output/formatter';
 import type { Config } from '../../config/schema';
 import type { GlobalFlags } from '../../types/flags';
 import type { ImageRequest, ImageResponse } from '../../types/api';
-import { mkdirSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, resolve, extname } from 'path';
+import { isInteractive } from '../../utils/env';
+import { promptText, failIfMissing } from '../../utils/prompt';
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.png': 'image/png', '.webp': 'image/webp',
 };
-import { isInteractive } from '../../utils/env';
-import { promptText, failIfMissing } from '../../utils/prompt';
 
 export default defineCommand({
   name: 'image generate',
@@ -34,6 +34,7 @@ export default defineCommand({
     { flag: '--aigc-watermark', description: 'Embed AI-generated content watermark in the output image.' },
     { flag: '--subject-ref <params>', description: 'Subject reference for character consistency. Format: type=character,image=path-or-url' },
     { flag: '--out <path>', description: 'Save image to exact file path (single image only)' },
+    { flag: '--response-format <format>', description: 'Response format: url (download), base64 (embed). Default: url' },
     { flag: '--out-dir <dir>', description: 'Download images to directory' },
     { flag: '--out-prefix <prefix>', description: 'Filename prefix (default: image)' },
   ],
@@ -49,6 +50,8 @@ export default defineCommand({
     'mmx image generate --prompt "sunset" --prompt-optimizer --aigc-watermark',
     '# Save to exact path',
     'mmx image generate --prompt "A cat" --out /tmp/cat.jpg',
+    '# Base64 response (bypasses CDN, useful when image URLs are unreachable)',
+    'mmx image generate --prompt "A cat" --response-format base64',
   ],
   async run(config: Config, flags: GlobalFlags) {
     let prompt = (flags.prompt ?? (flags._positional as string[]|undefined)?.[0]) as string | undefined;
@@ -96,6 +99,8 @@ export default defineCommand({
       throw new CLIError('--out cannot be used with --n > 1. Use --out-dir instead.', ExitCode.USAGE);
     }
 
+    const responseFormat = (flags.responseFormat as 'url' | 'base64' | undefined) || 'url';
+
     const body: ImageRequest = {
       model: 'image-01',
       prompt,
@@ -106,6 +111,7 @@ export default defineCommand({
       height: height,
       prompt_optimizer: flags.promptOptimizer === true || undefined,
       aigc_watermark: flags.aigcWatermark === true || undefined,
+      response_format: responseFormat,
     };
 
     if (flags.subjectRef) {
@@ -151,8 +157,6 @@ export default defineCommand({
       body,
     });
 
-    const imageUrls = response.data.image_urls || [];
-
     if (!config.quiet) {
       process.stderr.write('[Model: image-01]\n');
     }
@@ -166,21 +170,41 @@ export default defineCommand({
       if (existsSync(destPath)) {
         process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
       }
-      await downloadFile(imageUrls[0]!, destPath, { quiet: config.quiet });
+      if (responseFormat === 'base64') {
+        const image = (response.data.image_base64 || [])[0];
+        if (image) writeFileSync(destPath, image, 'base64');
+      } else {
+        const imageUrl = (response.data.image_urls || [])[0];
+        if (imageUrl) await downloadFile(imageUrl, destPath, { quiet: config.quiet });
+      }
       saved.push(destPath);
     } else {
       const outDir = (flags.outDir as string | undefined) ?? '.';
       if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
       const prefix = (flags.outPrefix as string) || 'image';
 
-      for (let i = 0; i < imageUrls.length; i++) {
-        const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
-        const destPath = join(outDir, filename);
-        if (existsSync(destPath)) {
-          process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+      if (responseFormat === 'base64') {
+        const images = response.data.image_base64 || [];
+        for (let i = 0; i < images.length; i++) {
+          const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
+          const destPath = join(outDir, filename);
+          if (existsSync(destPath)) {
+            process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+          }
+          writeFileSync(destPath, images[i]!, 'base64');
+          saved.push(destPath);
         }
-        await downloadFile(imageUrls[i]!, destPath, { quiet: config.quiet });
-        saved.push(destPath);
+      } else {
+        const imageUrls = response.data.image_urls || [];
+        for (let i = 0; i < imageUrls.length; i++) {
+          const filename = `${prefix}_${String(i + 1).padStart(3, '0')}.jpg`;
+          const destPath = join(outDir, filename);
+          if (existsSync(destPath)) {
+            process.stderr.write(`Warning: overwriting existing file: ${destPath}\n`);
+          }
+          await downloadFile(imageUrls[i]!, destPath, { quiet: config.quiet });
+          saved.push(destPath);
+        }
       }
     }
 
